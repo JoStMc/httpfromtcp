@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-var SEPARATOR = "\r\n"
+var separator = "\r\n"
 var bufferSize = 8
 
 type state int
@@ -68,7 +68,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 } 
 
 func parseRequestLine(b string) (*RequestLine, int, error) {
-	idx := strings.Index(b, SEPARATOR)
+	idx := strings.Index(b, separator)
 	if idx == -1 {
 	    return nil, 0, nil
 	} 
