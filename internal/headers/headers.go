@@ -14,6 +14,19 @@ func NewHeaders() Headers {
 
 var separator = []byte("\r\n")
 
+func parseHeaderLine(line []byte) (string, string, error) {
+	parts := bytes.Fields(line)
+	if len(parts) != 2 {
+		return "", "", errors.New("invalid header line")
+	} 
+	field_name := string(parts[0])
+	field_value := string(parts[1])
+	if field_name[len(field_name)-1] != ':' {
+		return "", "", errors.New("invalid header line")
+	} 
+	return strings.TrimRight(field_name, ":"), field_value, nil
+} 
+
 func (h Headers) Parse(data []byte) (int, bool, error) {
 	idx := bytes.Index(data, separator)
 	switch idx {
@@ -26,19 +39,14 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 	bytesParsed := idx
 
 	currentLine := data[:idx]
-	parts := bytes.Fields(currentLine)
-	if len(parts) != 2 {
-		return 0, false, errors.New("invalid header line")
-	} 
-	field_name := string(parts[0])
-	field_value := string(parts[1])
-	if field_name[len(field_name)-1] != ':' {
-		return 0, false, errors.New("invalid header line")
-	} 
-	h[strings.TrimRight(field_name, ":")] = field_value
+	field_name, field_value, err := parseHeaderLine(currentLine)
+	if err != nil {
+		return 0, false, err
+	}
+	h[field_name] = field_value
 
 	n, done, err := h.Parse(data[idx + len(separator):])
-	bytesParsed += n
+	bytesParsed += n + len(separator)
 	if err != nil {
 		return bytesParsed, false, err
 	}

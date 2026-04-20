@@ -16,7 +16,8 @@ func TestHeadersParse(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, headers)
 	assert.Equal(t, "localhost:42069", headers["Host"])
-	assert.Equal(t, 23, n)
+	assert.Equal(t, 25, n)
+	assert.True(t, done)
 
 	// Test: Valid single, not done
 	headers = NewHeaders()
@@ -25,7 +26,7 @@ func TestHeadersParse(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, headers)
 	assert.Equal(t, "localhost:42069", headers["Host"])
-	assert.Equal(t, 21, n)
+	assert.Equal(t, 23, n)
 	assert.False(t, done)
 
 	// Test: Valid single with extra whitespace
@@ -35,7 +36,8 @@ func TestHeadersParse(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, headers)
 	assert.Equal(t, "localhost:42069", headers["Host"])
-	assert.Equal(t, 33, n)
+	assert.Equal(t, 35, n)
+	assert.True(t, done)
 
 	// Test: Valid 2 headers 
 	headers = NewHeaders()
@@ -45,7 +47,7 @@ func TestHeadersParse(t *testing.T) {
 	require.NotNil(t, headers)
 	assert.Equal(t, "localhost:42069", headers["Host"])
 	assert.Equal(t, "Local", headers["Origin"])
-	assert.Equal(t, 36, n)
+	assert.Equal(t, 40, n)
 
 	// Test: Invalid spacing header
 	headers = NewHeaders()
