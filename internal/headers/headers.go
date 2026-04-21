@@ -20,7 +20,7 @@ var validSpecialChars = []rune{'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.'
 
 func isToken(str string) bool {
 	for _, ch := range str {
-	    if ch < 'A' || ch > 'z' {
+	    if ch < 'A' || ch > 'Z' && ch < 'a' || ch > 'z' {
 	        if ch < '0' || ch > '9' {
 				if !slices.Contains(validSpecialChars, ch) {
 					return false
