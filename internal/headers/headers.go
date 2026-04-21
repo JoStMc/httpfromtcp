@@ -3,28 +3,65 @@ package headers
 import (
 	"bytes"
 	"errors"
+	"slices"
 	"strings"
 )
 
 type Headers map[string]string
+
 
 func NewHeaders() Headers {
 	return make(Headers)
 } 
 
 var separator = []byte("\r\n")
+var validSpecialChars = []rune{'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~'} 
+
+
+func isToken(str string) bool {
+	for _, ch := range str {
+	    if ch < 'A' || ch > 'z' {
+	        if ch < '0' || ch > '9' {
+				if !slices.Contains(validSpecialChars, ch) {
+					return false
+				} 
+	        } 
+	    } 
+	} 
+	return true
+} 
 
 func parseHeaderLine(line []byte) (string, string, error) {
 	parts := bytes.Fields(line)
 	if len(parts) != 2 {
 		return "", "", errors.New("invalid header line")
 	} 
-	field_name := string(parts[0])
-	field_value := string(parts[1])
-	if field_name[len(field_name)-1] != ':' {
+	fieldName := string(parts[0])
+	fieldValue := string(parts[1])
+	if fieldName[len(fieldName)-1] != ':' {
 		return "", "", errors.New("invalid header line")
 	} 
-	return strings.TrimRight(field_name, ":"), field_value, nil
+	fieldName = fieldName[:len(fieldName)-1]
+
+	if !isToken(fieldName) {
+		return "", "", errors.New("field name contains invalid character")
+	} 
+
+	return fieldName, fieldValue, nil
+} 
+
+
+func (h Headers) Get(name string) string {
+    return h[strings.ToLower(name)]
+} 
+
+func (h Headers) Set(name, value string) {
+	name = strings.ToLower(name)
+	v, ok := h[name]
+	if ok {
+		value = v + "," + value
+	} 
+	h[name] = value
 } 
 
 func (h Headers) Parse(data []byte) (int, bool, error) {
@@ -39,11 +76,12 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 	bytesParsed := idx
 
 	currentLine := data[:idx]
-	field_name, field_value, err := parseHeaderLine(currentLine)
+	fieldName, fieldValue, err := parseHeaderLine(currentLine)
 	if err != nil {
 		return 0, false, err
 	}
-	h[field_name] = field_value
+
+	h.Set(fieldName, fieldValue)
 
 	n, done, err := h.Parse(data[idx + len(separator):])
 	bytesParsed += n + len(separator)
