@@ -29,7 +29,9 @@ func main() {
 			log.Fatal(err)
 		}
 
+
 		printReqLine(req)
+		printHeaders(req)
 
 		fmt.Println("Connection has been closed")
 	}
@@ -40,4 +42,11 @@ func printReqLine(req *request.Request) {
 	fmt.Println("- Method:", req.RequestLine.Method)
 	fmt.Println("- Target:", req.RequestLine.RequestTarget)
 	fmt.Println("- Version:", req.RequestLine.HttpVersion)
+} 
+
+func printHeaders(req *request.Request) {
+	fmt.Println("Headers:")
+	for key, value := range req.Headers {
+		fmt.Printf("- %s: %s\n", key, value)
+	} 
 } 

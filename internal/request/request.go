@@ -3,6 +3,7 @@ package request
 import (
 	"errors"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/JoStMc/httpfromtcp/internal/headers"
@@ -15,6 +16,7 @@ type state int
 const (
 	requestStateInitialized state = iota
 	requestStateParsingHeaders
+	requestStateParsingBody
 	requestStateDone
 )
 
@@ -22,6 +24,7 @@ type Request struct {
     RequestLine RequestLine
 	Headers 	headers.Headers
 	State		state
+	Body 		[]byte
 } 
 
 type RequestLine struct {
@@ -43,6 +46,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 	buf := make([]byte, bufferSize, bufferSize)
 	readToIndex := 0
+	reachedEnd := false
 
 	for request.State != requestStateDone {
 		if buf[len(buf)-1] != 0 {
@@ -54,10 +58,10 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		n, err := reader.Read(buf[readToIndex:])
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				request.State = requestStateDone;
-				break
+				reachedEnd = true
+			} else {
+				return nil, err
 			} 
-			return nil, err
 		}
 		readToIndex += n
 
@@ -65,10 +69,18 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		if err != nil {
 			return nil, err
 		}
+		if reachedEnd {
+		    request.State = requestStateDone
+			break
+		} 
 		copy(buf, buf[bytesParsed:readToIndex])
 		readToIndex -= bytesParsed
 	} 
 
+	
+	if cl, _ := request.getContentLength(); len(request.Body) != cl {
+		return nil, errors.New("body shorter than expected")
+	} 
 	return request, nil
 } 
 
@@ -108,6 +120,18 @@ func parseRequestLine(b string) (*RequestLine, int, error) {
 	}, idx+len(separator), nil
 }
 
+func (r *Request) getContentLength() (int, error) {
+	contentLength := r.Headers.Get("content-length")
+	if contentLength == "" {
+		return 0, nil
+	}
+	length, err := strconv.Atoi(contentLength)
+	if err != nil {
+		return 0, errors.New("error: invalid content-length header")
+	}
+	return length, nil
+} 
+
 func (r *Request) parse(data []byte) (int, error) {
 	switch r.State {
 	case requestStateInitialized:
@@ -116,7 +140,7 @@ func (r *Request) parse(data []byte) (int, error) {
 			return bytesParsed, err
 		}
 		if bytesParsed == 0 {
-		    return 0, nil
+			return 0, nil
 		} 
 		r.RequestLine = *requestLine
 		r.State++
@@ -127,9 +151,27 @@ func (r *Request) parse(data []byte) (int, error) {
 			return bytesParsed, err
 		}
 		if done {
-		    r.State++
+			r.State++
 		} 
 		return bytesParsed, nil
+	case requestStateParsingBody:
+		length, err := r.getContentLength()
+		if err != nil {
+			return 0, err
+		}
+		if length == 0 {
+		    r.State++
+			return 0, nil
+		} 
+
+		r.Body = append(r.Body, data...) 
+
+		if len(r.Body) > length {
+			return len(data), errors.New("error: body longer than expected")
+		} else if len(r.Body) == length {
+			r.State++
+		} 
+		return len(data), nil
 	case requestStateDone:
 		return 0, errors.New("error: trying to read data in a done state")
 	default:
