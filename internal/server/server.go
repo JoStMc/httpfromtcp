@@ -3,6 +3,8 @@ package server
 import (
 	"fmt"
 	"net"
+
+	"github.com/JoStMc/httpfromtcp/internal/response"
 )
 
 type Server struct {
@@ -39,12 +41,16 @@ func (s *Server) Close() error {
 } 
 
 func (s *Server) handle(conn net.Conn) error {
-	out := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello World!\n"
-	_, err := conn.Write([]byte(out))
+	err := response.WriteStatusLine(conn, response.StatusOK)
 	if err != nil {
 		return err
 	}
-	return s.Close()
+	headers := response.GetDefaultHeaders(0)
+	err = response.WriteHeaders(conn, headers)
+	if err != nil {
+		return err
+	}
+	return conn.Close()
 } 
 
 func (s *Server) listen() error {
