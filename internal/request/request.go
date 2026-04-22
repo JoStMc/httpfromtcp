@@ -41,6 +41,10 @@ func newRequest() *Request {
 	}
 } 
 
+func (r *Request) GetBody() string {
+    return string(r.Body)
+} 
+
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	request := newRequest() 
 
@@ -77,10 +81,11 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		readToIndex -= bytesParsed
 	} 
 
-	
+	// Not a fan of this, but apparently Content-Length > actual body isn't
+	// deseriable and there's no easy way to check we have EOF in .parse
 	if cl, _ := request.getContentLength(); len(request.Body) != cl {
 		return nil, errors.New("body shorter than expected")
-	} 
+	}
 	return request, nil
 } 
 
@@ -120,6 +125,7 @@ func parseRequestLine(b string) (*RequestLine, int, error) {
 	}, idx+len(separator), nil
 }
 
+// Could make more general to int headers
 func (r *Request) getContentLength() (int, error) {
 	contentLength := r.Headers.Get("content-length")
 	if contentLength == "" {

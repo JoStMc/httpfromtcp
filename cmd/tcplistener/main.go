@@ -32,6 +32,7 @@ func main() {
 
 		printReqLine(req)
 		printHeaders(req)
+		printBody(req)
 
 		fmt.Println("Connection has been closed")
 	}
@@ -49,4 +50,9 @@ func printHeaders(req *request.Request) {
 	for key, value := range req.Headers {
 		fmt.Printf("- %s: %s\n", key, value)
 	} 
+} 
+
+func printBody(req *request.Request) {
+	fmt.Println("Body:")
+	fmt.Println(req.GetBody()
 } 
