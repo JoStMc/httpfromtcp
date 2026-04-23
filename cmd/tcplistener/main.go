@@ -54,5 +54,5 @@ func printHeaders(req *request.Request) {
 
 func printBody(req *request.Request) {
 	fmt.Println("Body:")
-	fmt.Println(req.GetBody()
+	fmt.Println(req.GetBody())
 } 
