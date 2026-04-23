@@ -40,8 +40,14 @@ func (s *Server) Close() error {
 	return nil
 } 
 
+
 func writeHandlerError(w io.Writer, handlerError *HandlerError) error {
 	err := response.WriteStatusLine(w, handlerError.statusCode)
+	if err != nil {
+		return err
+	}
+	headers := response.GetDefaultHeaders(len(handlerError.errorMessage))
+	err = response.WriteHeaders(w, headers)
 	if err != nil {
 		return err
 	}
@@ -56,20 +62,16 @@ func (s *Server) handle(conn net.Conn) error {
 	}
 	buf := bytes.NewBuffer([]byte{})
 
-	handlerError := s.handler(conn, req)
+	handlerError := s.handler(buf, req)
 	if handlerError != nil {
-		err = writeHandlerError(buf, handlerError)
-		if err != nil {
-			return err
-		}
-		return nil
+		return writeHandlerError(conn, handlerError)
 	} 
 
+	headers := response.GetDefaultHeaders(buf.Len())
 	err = response.WriteStatusLine(conn, response.StatusOK)
 	if err != nil {
 		return err
 	}
-	headers := response.GetDefaultHeaders(buf.Len())
 	err = response.WriteHeaders(conn, headers)
 	if err != nil {
 		return err

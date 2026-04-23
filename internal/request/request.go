@@ -41,6 +41,11 @@ func newRequest() *Request {
 	}
 } 
 
+func (r *Request) hasBody() bool {
+	length, _ := strconv.Atoi(r.Headers.Get("content-length"))
+	return length == 0
+} 
+
 func (r *Request) GetBody() string {
     return string(r.Body)
 } 
@@ -50,7 +55,6 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 	buf := make([]byte, bufferSize, bufferSize)
 	readToIndex := 0
-	reachedEnd := false
 
 	for request.State != requestStateDone {
 		if buf[len(buf)-1] != 0 {
@@ -61,11 +65,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 		n, err := reader.Read(buf[readToIndex:])
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				reachedEnd = true
-			} else {
-				return nil, err
-			} 
+			return nil, err
 		}
 		readToIndex += n
 
@@ -73,10 +73,6 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		if err != nil {
 			return nil, err
 		}
-		if reachedEnd {
-		    request.State = requestStateDone
-			break
-		} 
 		copy(buf, buf[bytesParsed:readToIndex])
 		readToIndex -= bytesParsed
 	} 
@@ -158,6 +154,9 @@ func (r *Request) parse(data []byte) (int, error) {
 		}
 		if done {
 			r.State++
+			if r.hasBody() {
+			    r.State++
+			} 
 		} 
 		return bytesParsed, nil
 	case requestStateParsingBody:

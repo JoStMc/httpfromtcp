@@ -35,6 +35,7 @@ func handlerPaths(w io.Writer, req *request.Request) *server.HandlerError {
 	case "/myproblem":
 		return server.NewHandlerError(response.StatusIntervalServerError, []byte("My mistake\n"))
 	default:
-		return server.NewHandlerError(response.StatusOK, []byte("All good\n"))
+		w.Write([]byte("All good\n"))
 	}
+	return nil
 } 
