@@ -21,6 +21,7 @@ const (
 	stateHeaders
 	stateBody
 )
+var responseOutOfOrder = fmt.Errorf("response not written in the correct order")
 
 type Writer struct {
 	writer io.Writer
@@ -32,6 +33,9 @@ func NewWriter(writer io.Writer) *Writer {
 } 
 
 func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
+	if w.writerState != writerState(stateStatusLine) {
+	    return responseOutOfOrder
+	} 
 	var out string
 	switch statusCode {
 	case StatusOK:
@@ -49,6 +53,9 @@ func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
 } 
 
 func (w *Writer) WriteHeaders(h headers.Headers) error {
+	if w.writerState != writerState(stateHeaders) {
+	    return responseOutOfOrder
+	} 
 	out := []byte{}
 	h.ForEach(func(n, v string) {
 		out = fmt.Appendf(out, "%s: %s\r\n", n, v)
@@ -60,6 +67,9 @@ func (w *Writer) WriteHeaders(h headers.Headers) error {
 } 
 
 func (w *Writer) WriteBody(p []byte) (int, error) {
+	if w.writerState != writerState(stateBody) {
+	    return 0, responseOutOfOrder
+	} 
 	return w.writer.Write(p)
 } 
 
