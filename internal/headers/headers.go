@@ -55,6 +55,10 @@ func (h Headers) Get(name string) string {
     return h[strings.ToLower(name)]
 } 
 
+func (h Headers) Replace(name, value string) {
+	h[strings.ToLower(name)] = value
+} 
+
 func (h Headers) Set(name, value string) {
 	name = strings.ToLower(name)
 	v, ok := h[name]

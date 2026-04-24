@@ -1,8 +1,6 @@
 package server
 
 import (
-	"io"
-
 	"github.com/JoStMc/httpfromtcp/internal/request"
 	"github.com/JoStMc/httpfromtcp/internal/response"
 )
@@ -12,8 +10,7 @@ type HandlerError struct {
 	errorMessage []byte
 } 
 
-type Handler func(w io.Writer, req *request.Request) *HandlerError
-
+type Handler func(w *response.Writer, req *request.Request)
 
 func NewHandlerError(code response.StatusCode, message []byte) *HandlerError {
     return &HandlerError{

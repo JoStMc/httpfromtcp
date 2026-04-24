@@ -1,9 +1,7 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"net"
 
 	"github.com/JoStMc/httpfromtcp/internal/request"
@@ -41,43 +39,24 @@ func (s *Server) Close() error {
 } 
 
 
-func writeHandlerError(w io.Writer, handlerError *HandlerError) error {
-	err := response.WriteStatusLine(w, handlerError.statusCode)
-	if err != nil {
-		return err
-	}
-	headers := response.GetDefaultHeaders(len(handlerError.errorMessage))
-	err = response.WriteHeaders(w, headers)
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(handlerError.errorMessage)
-	return err
+func (hErr *HandlerError) Write(w *response.Writer) {
+	w.WriteStatusLine(hErr.statusCode)
+	headers := response.GetDefaultHeaders(len(hErr.errorMessage))
+	w.WriteHeaders(headers)
+	w.WriteBody(hErr.errorMessage)
 } 
 
-func (s *Server) handle(conn net.Conn) error {
+func (s *Server) handle(conn net.Conn) {
+	defer conn.Close()
+
+	responseWriter := response.NewWriter(conn)
 	req, err := request.RequestFromReader(conn)
 	if err != nil {
-		return err
+		handlerError := NewHandlerError(response.StatusBadRequest, []byte(err.Error()))
+		handlerError.Write(responseWriter)
+		return 
 	}
-	buf := bytes.NewBuffer([]byte{})
-
-	handlerError := s.handler(buf, req)
-	if handlerError != nil {
-		return writeHandlerError(conn, handlerError)
-	} 
-
-	headers := response.GetDefaultHeaders(buf.Len())
-	err = response.WriteStatusLine(conn, response.StatusOK)
-	if err != nil {
-		return err
-	}
-	err = response.WriteHeaders(conn, headers)
-	if err != nil {
-		return err
-	}
-	conn.Write(buf.Bytes())
-	return conn.Close()
+	s.handler(responseWriter, req)
 } 
 
 func (s *Server) listen() error {
