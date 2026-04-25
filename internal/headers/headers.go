@@ -32,16 +32,12 @@ func isToken(str string) bool {
 } 
 
 func parseHeaderLine(line []byte) (string, string, error) {
-	parts := bytes.Fields(line)
+	parts := bytes.SplitN(line, []byte(":"), 2)
 	if len(parts) != 2 {
 		return "", "", errors.New("invalid header line")
 	} 
-	fieldName := string(parts[0])
-	fieldValue := string(parts[1])
-	if fieldName[len(fieldName)-1] != ':' {
-		return "", "", errors.New("invalid header line")
-	} 
-	fieldName = fieldName[:len(fieldName)-1]
+	fieldName := string(bytes.Trim(parts[0], " "))
+	fieldValue := string(bytes.Trim(parts[1], " "))
 
 	if !isToken(fieldName) {
 		return "", "", errors.New("field name contains invalid character")
