@@ -101,9 +101,5 @@ func (w *Writer) WriteTrailers(h headers.Headers) error {
 	    return responseOutOfOrder
 	} 
 	err := w.WriteHeaders(h)
-	if err != nil {
-		return err
-	}
-	_, err = w.writer.Write([]byte("\r\n"))
 	return err
 } 

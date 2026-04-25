@@ -129,6 +129,17 @@ func handlerPaths(w *response.Writer, req *request.Request) {
 	case "/myproblem":
 		b = respond500()
 		w.WriteStatusLine(response.StatusIntervalServerError)
+	case "/video":
+		video, err := os.ReadFile("assets/vim.mp4")
+		if err != nil {
+			log.Fatal(err)
+		}
+		w.WriteStatusLine(response.StatusOK)
+		headers := response.GetDefaultHeaders(len(video))
+		headers.Replace("Content-Type", "video/mp4")
+		w.WriteHeaders(headers)
+		w.WriteBody(video)
+		return
 	default:
 		b = respond200()
 		w.WriteStatusLine(response.StatusOK)
