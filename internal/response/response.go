@@ -20,6 +20,7 @@ const (
 	stateStatusLine writerState = iota
 	stateHeaders
 	stateBody
+	stateTrailers
 )
 var responseOutOfOrder = fmt.Errorf("response not written in the correct order")
 
@@ -53,7 +54,7 @@ func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
 } 
 
 func (w *Writer) WriteHeaders(h headers.Headers) error {
-	if w.writerState != writerState(stateHeaders) {
+	if w.writerState != stateHeaders && w.writerState != stateTrailers {
 	    return responseOutOfOrder
 	} 
 	out := []byte{}
@@ -87,10 +88,22 @@ func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
 	w.WriteBody(fmt.Appendf(nil, "%x\r\n", length))
 	n, err := w.WriteBody(p)
 	w.WriteBody([]byte("\r\n"))
-	return n, err
-}
+	return n, err}
 
 func (w *Writer) WriteChunkedBodyDone() (int, error) {
-	out := []byte("0\r\n\r\n")
-	return w.WriteBody(out)
+	out := []byte("0\r\n")
+	w.writerState++
+	return w.writer.Write(out)
+} 
+
+func (w *Writer) WriteTrailers(h headers.Headers) error {
+	if w.writerState != stateTrailers {
+	    return responseOutOfOrder
+	} 
+	err := w.WriteHeaders(h)
+	if err != nil {
+		return err
+	}
+	_, err = w.writer.Write([]byte("\r\n"))
+	return err
 } 

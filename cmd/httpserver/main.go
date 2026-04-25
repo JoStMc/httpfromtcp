@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -71,13 +72,15 @@ func respond500() []byte {
 
 func handlerPaths(w *response.Writer, req *request.Request) {
 	target := req.RequestLine.RequestTarget
-	if strings.HasPrefix(target, "/httpbin/") {
-		path := strings.Trim(target, "/httpbin/")
+	if path, ok := strings.CutPrefix(target, "/httpbin/"); ok  {
 		proxy := fmt.Sprintf("https://httpbin.org/%s", path)
 		h := headers.NewHeaders()
 		h.Set("Connection", "close")
 		h.Set("Content-Type", "text/plain")
 		h.Set("Transfer-Encoding", "chunked")
+
+		h.Set("Trailer", "X-Content-SHA256")
+		h.Set("Trailer", "Content-Length")
 
 		res, err := http.Get(proxy)
 		if err != nil {
@@ -87,6 +90,7 @@ func handlerPaths(w *response.Writer, req *request.Request) {
 		w.WriteStatusLine(response.StatusOK)
 		w.WriteHeaders(h)
 
+		fullBody := []byte{}
 		for {
 			p := make([]byte, 1024)
 			n, err := res.Body.Read(p)
@@ -94,12 +98,22 @@ func handlerPaths(w *response.Writer, req *request.Request) {
 				if errors.Is(err, io.EOF) {
 					n, _ := w.WriteChunkedBodyDone()
 					fmt.Println("Bytes parsed:", n)
+
+					hash := sha256.Sum256(fullBody)
+					trailers := headers.NewHeaders()
+					trailers.Set("X-Content-SHA256", fmt.Sprintf("%x", hash[:]))
+					trailers.Set("X-Content-Length", fmt.Sprintf("%d", len(fullBody)))
+					err = w.WriteTrailers(trailers)
+					if err != nil {
+						log.Fatal(err)
+					}
 					return
 				} else {
 					log.Fatal(err)
 				} 
 			}
 			_, err = w.WriteChunkedBody(p[:n])
+			fullBody = append(fullBody, p[:n]...)
 			if err != nil {
 				log.Fatal(err)
 			}
