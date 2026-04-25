@@ -87,26 +87,23 @@ func handlerPaths(w *response.Writer, req *request.Request) {
 		w.WriteStatusLine(response.StatusOK)
 		w.WriteHeaders(h)
 
-		done := false
 		for {
 			p := make([]byte, 1024)
-			_, err := res.Body.Read(p)
+			n, err := res.Body.Read(p)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
-					done = true
-					continue
+					n, _ := w.WriteChunkedBodyDone()
+					fmt.Println("Bytes parsed:", n)
+					return
+				} else {
+					log.Fatal(err)
 				} 
-				log.Fatal(err)
 			}
-			fmt.Println(string(p))
-			n, err := w.WriteChunkedBody(p)
+			_, err = w.WriteChunkedBody(p[:n])
 			if err != nil {
 				log.Fatal(err)
 			}
-			fmt.Println("Chunked bytes parsed: ", n)
-			if done {
-				return
-			} 
+			fmt.Println("Bytes parsed: ", n)
 		} 
 	} 
 
