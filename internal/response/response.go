@@ -1,11 +1,16 @@
 package response
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/JoStMc/httpfromtcp/internal/headers"
 )
+
+var separator = []byte("\r\n")
 
 type StatusCode int
 const (
@@ -80,3 +85,48 @@ func GetDefaultHeaders(contentLen int) headers.Headers {
 	h.Set("Content-Type", "text/plain")
 	return h
 } 
+
+
+func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
+	if w.writerState != stateBody {
+	    return 0, responseOutOfOrder
+	} 
+	lenSep := len(separator)
+
+	idx := bytes.Index(p, separator)
+	if idx == -1 {
+	    return 0, nil
+	} 
+	idx2 := bytes.Index(p[lenSep:], separator)
+	if idx2 == -1 {
+	    return 0, nil
+	} 
+	
+	strChunkLen := string(p[:idx])
+	// may be a bad way to do this
+	chunkLen, err := strconv.ParseInt(strChunkLen, 16, len(strChunkLen)*4)
+	if err != nil {
+		return 0, err
+	}
+
+	if idx2 != int(chunkLen) {
+		return 0, errors.New("chunk length mismatch")
+	} 
+
+	if chunkLen == 0 {
+		// bytes parsed
+		return len(strChunkLen) + len(separator)*2, nil
+	} 
+
+	chunk := p[idx+lenSep:idx+lenSep+idx2]
+
+	_, err = w.writer.Write(chunk)
+	if err != nil {
+		return 0, err
+	}
+
+	bytesParsed := idx+2*lenSep+idx
+	n, err := w.WriteChunkedBody(p[bytesParsed:])
+	bytesParsed+=n
+	return bytesParsed, err
+}
